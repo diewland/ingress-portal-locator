@@ -5,61 +5,27 @@
     android:orientation="vertical"
     tools:context=".MainActivity" >
 
-    <LinearLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" >
-
-        <Button
-            android:id="@+id/save_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="SAVE" />
+        android:layout_height="match_parent" >
         
-       <Button
-            android:id="@+id/reset_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="RESET" />
-       
-       <Button
-            android:id="@+id/select_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="SELECT" />
+		<fragment xmlns:android="http://schemas.android.com/apk/res/android"
+		android:id="@+id/map"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		class="com.google.android.gms.maps.MapFragment"/>
 
-       <TextView
-           android:id="@+id/textView1"
-           android:layout_width="wrap_content"
-           android:layout_height="wrap_content"
-           android:text="["
-           android:textAppearance="?android:attr/textAppearanceLarge" />
+		<TextView
+		    android:id="@+id/filename"
+		    android:layout_width="match_parent"
+		    android:layout_height="wrap_content"
+		    android:padding="10dip"
+		    android:text="Loading..."
+		    android:background="#88000000"
+		    android:textColor="#ffffff"
+		    android:textAppearance="?android:attr/textAppearanceLarge" />
+        
+    </FrameLayout>
 
-       <Button
-            android:id="@+id/nml_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="N" />
-       
-       <Button
-            android:id="@+id/stl_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="S" />
-       
-       <TextView
-           android:id="@+id/textView1"
-           android:layout_width="wrap_content"
-           android:layout_height="wrap_content"
-           android:text="]"
-           android:textAppearance="?android:attr/textAppearanceLarge" />
-
-
-    </LinearLayout>
-    
-	<fragment xmlns:android="http://schemas.android.com/apk/res/android"
-	  android:id="@+id/map"
-	  android:layout_width="match_parent"
-	  android:layout_height="match_parent"
-	  class="com.google.android.gms.maps.MapFragment"/>
 
 </LinearLayout>

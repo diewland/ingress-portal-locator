@@ -3,9 +3,8 @@ package mfec.enlightened.portal.locator;
 import java.io.IOException;
 import java.util.List;
 
-import mfec.enlightened.portal.locator.R;
-
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -14,10 +13,11 @@ import android.location.LocationManager;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
-import android.view.View;
-import android.widget.Button;
+import android.view.MenuItem;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -26,12 +26,6 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-
-/*
- *  
- *  TODO --- use production keystore
- * 
- * */
 
 public class MainActivity extends Activity {
 
@@ -112,6 +106,10 @@ public class MainActivity extends Activity {
 				Toast t = Toast.makeText(getApplicationContext(), "Error Open Image", Toast.LENGTH_SHORT);
 				t.show();
 			}
+			
+			// update filename
+			String fileName = getFileNameFromUri(selectedImg, getContentResolver());
+			((TextView)findViewById(R.id.filename)).setText(fileName);
 		}
 	}
 	
@@ -132,15 +130,30 @@ public class MainActivity extends Activity {
 		return null;
 	}
 	
+	private String getFileNameFromUri(Uri selectedImg, ContentResolver cr){
+		String fileName = null;
+		String scheme = selectedImg.getScheme();
+		if (scheme.equals("file")) {
+		    fileName = selectedImg.getLastPathSegment();
+		}
+		else if (scheme.equals("content")) {
+		    String[] proj = { MediaStore.Images.Media.TITLE };
+		    Cursor cursor = getContentResolver().query(selectedImg, proj, null, null, null);
+		    if (cursor != null && cursor.getCount() != 0) {
+		        int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.TITLE);
+		        cursor.moveToFirst();
+		        fileName = cursor.getString(columnIndex);
+		    }
+		}
+		return fileName;
+	}
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
 		// Default Location from coarse location
-		
-		map_lat_ori  = map_lat  = 13.764959;  // TODO
-		map_long_ori = map_long = 100.538291; // TODO
 		double[] bestloc = getLocation();
 		if(bestloc != null){
 			map_lat_ori  = map_lat  = bestloc[0];
@@ -156,59 +169,6 @@ public class MainActivity extends Activity {
 		
 		// move to lat, long
 		moveToLatLong();
-		
-		// buttons
-		((Button)findViewById(R.id.save_btn)).setOnClickListener(new View.OnClickListener() {
-			public void onClick(View v){
-				Double[] ll = updateOriLatLong();
-				
-				// save new lat,long to photo
-				Double curr_lat = ll[0];
-				Double curr_long = ll[1];
-				
-				try {
-					ExifInterface exif = new ExifInterface(selectedUri);
-					String str_lat = convertToDMS(map_lat);
-					String lat_ref = map_lat > 0 ? "N" : "E";
-					String str_long = convertToDMS(map_long);
-					String long_ref = map_long > 0 ? "E" : "W";
-					exif.setAttribute(exif.TAG_GPS_LATITUDE, str_lat);
-					exif.setAttribute(exif.TAG_GPS_LATITUDE_REF, lat_ref);
-					exif.setAttribute(exif.TAG_GPS_LONGITUDE, str_long);
-					exif.setAttribute(exif.TAG_GPS_LONGITUDE_REF, long_ref);
-					exif.saveAttributes();
-				} catch (IOException e) {
-					Toast.makeText(getApplicationContext(),"Error Saving Location",Toast.LENGTH_LONG).show();
-				}
-				
-				// toast
-				Toast.makeText(getApplicationContext(),
-								"SAVE TO\n"+ map_lat +"\n"+ map_long,
-								Toast.LENGTH_LONG).show();
-			}
-		});
-		((Button)findViewById(R.id.reset_btn)).setOnClickListener(new View.OnClickListener() {
-			public void onClick(View v){
-				restoreOriLatLong();
-				moveToLatLong();
-			}
-		});
-		((Button)findViewById(R.id.select_btn)).setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
-				photoPickerIntent.setType("image/jpeg");
-				startActivityForResult(photoPickerIntent, SELECT_PHOTO);
-			}
-		});
-		((Button)findViewById(R.id.nml_btn)).setOnClickListener(new View.OnClickListener() {
-			public void onClick(View v){ map.setMapType(GoogleMap.MAP_TYPE_NORMAL); }
-		});
-		((Button)findViewById(R.id.stl_btn)).setOnClickListener(new View.OnClickListener() {
-			public void onClick(View v){ map.setMapType(GoogleMap.MAP_TYPE_SATELLITE); }
-		});
-		
 	}
 	
 	private void setUpMapIfNeeded() {
@@ -265,6 +225,60 @@ public class MainActivity extends Activity {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.activity_main, menu);
 		return true;
+	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		
+		case R.id.menu_reset:
+			restoreOriLatLong();
+			moveToLatLong();
+			break;
+			
+		case R.id.menu_save:
+			Double[] ll = updateOriLatLong();
+			// save new lat,long to photo
+			Double curr_lat = ll[0];
+			Double curr_long = ll[1];
+			try {
+				ExifInterface exif = new ExifInterface(selectedUri);
+				String str_lat = convertToDMS(map_lat);
+				String lat_ref = map_lat > 0 ? "N" : "E";
+				String str_long = convertToDMS(map_long);
+				String long_ref = map_long > 0 ? "E" : "W";
+				exif.setAttribute(exif.TAG_GPS_LATITUDE, str_lat);
+				exif.setAttribute(exif.TAG_GPS_LATITUDE_REF, lat_ref);
+				exif.setAttribute(exif.TAG_GPS_LONGITUDE, str_long);
+				exif.setAttribute(exif.TAG_GPS_LONGITUDE_REF, long_ref);
+				exif.saveAttributes();
+			} catch (IOException e) {
+				Toast.makeText(getApplicationContext(),"Error Saving Location",Toast.LENGTH_LONG).show();
+			}
+			// toast
+			Toast.makeText(getApplicationContext(), "Save to\n"+ map_lat +"\n"+ map_long, Toast.LENGTH_LONG).show();
+			break;
+			
+		case R.id.menu_share:
+			// TODO
+			Toast.makeText(getBaseContext(), "Under Contruction", Toast.LENGTH_SHORT).show();
+			break;
+			
+		case R.id.menu_browse:
+			Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
+			photoPickerIntent.setType("image/jpeg");
+			startActivityForResult(photoPickerIntent, SELECT_PHOTO);
+			break;
+			
+		case R.id.menu_v_normal:
+			map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+			break;
+			
+		case R.id.menu_v_satellite:
+			map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+			break;
+		}
+		return super.onOptionsItemSelected(item);
 	}
 
 }

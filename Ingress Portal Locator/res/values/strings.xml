@@ -2,6 +2,11 @@
 <resources>
 
     <string name="app_name">Ingress Portal Locator</string>
-    <string name="menu_settings">Settings</string>
+    <string name="menu_reset">Reset</string>
+    <string name="menu_save">Save</string>
+    <string name="menu_share">Send to NIA Super Ops</string>
+    <string name="menu_browse">Browse</string>
+    <string name="menu_v_normal">Normal View</string>
+    <string name="menu_v_satellite">Sattellite View</string>
 
 </resources>
