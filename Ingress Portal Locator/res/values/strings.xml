@@ -6,7 +6,6 @@
     <string name="menu_save">Save</string>
     <string name="menu_share">Send to NIA Super Ops</string>
     <string name="menu_browse">Browse</string>
-    <string name="menu_v_normal">Normal View</string>
-    <string name="menu_v_satellite">Sattellite View</string>
+    <string name="menu_layers">Layers</string>
 
 </resources>

@@ -17,7 +17,7 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.TextView;
+import android.view.Window;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -109,7 +109,7 @@ public class MainActivity extends Activity {
 			
 			// update filename
 			String fileName = getFileNameFromUri(selectedImg, getContentResolver());
-			((TextView)findViewById(R.id.filename)).setText(fileName);
+			getActionBar().setTitle(fileName);
 		}
 	}
 	
@@ -151,6 +151,11 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		
+		// custom action bar
+		requestWindowFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
+		getActionBar().setBackgroundDrawable(getResources().getDrawable(R.drawable.bg55));
+	
 		setContentView(R.layout.activity_main);
 		
 		// Default Location from coarse location
@@ -264,18 +269,15 @@ public class MainActivity extends Activity {
 			Toast.makeText(getBaseContext(), "Under Contruction", Toast.LENGTH_SHORT).show();
 			break;
 			
+		case R.id.menu_layers:
+			// TODO --- call layer dialog
+			// map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+			break;
+			
 		case R.id.menu_browse:
 			Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
 			photoPickerIntent.setType("image/jpeg");
 			startActivityForResult(photoPickerIntent, SELECT_PHOTO);
-			break;
-			
-		case R.id.menu_v_normal:
-			map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-			break;
-			
-		case R.id.menu_v_satellite:
-			map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
 			break;
 		}
 		return super.onOptionsItemSelected(item);

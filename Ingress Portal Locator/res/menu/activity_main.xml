@@ -18,21 +18,19 @@
         android:showAsAction="ifRoom"
         android:icon="@android:drawable/ic_menu_share"
         android:title="@string/menu_share"/>
+    
+    <item android:id="@+id/menu_layers"
+        android:orderInCategory="100"
+        android:showAsAction="ifRoom"
+        android:icon="@android:drawable/ic_menu_mapmode"
+        android:title="@string/menu_layers" />
+    
     <item
         android:id="@+id/menu_browse"
         android:orderInCategory="100"
         android:showAsAction="ifRoom"
         android:icon="@android:drawable/ic_menu_gallery"
         android:title="@string/menu_browse"/>
-    <item
-        android:id="@+id/menu_v_normal"
-        android:orderInCategory="100"
-        android:showAsAction="never"
-        android:title="@string/menu_v_normal"/>
-    <item
-        android:id="@+id/menu_v_satellite"
-        android:orderInCategory="100"
-        android:showAsAction="never"
-        android:title="@string/menu_v_satellite"/>
+    
 
 </menu>
