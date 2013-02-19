@@ -5,7 +5,10 @@ import java.io.IOException;
 import java.util.List;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.AlertDialog.Builder;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.location.Location;
@@ -37,6 +40,7 @@ public class MainActivity extends Activity {
 	private String selectedUri;
 	private File selectedFile;
 	private static final int SELECT_PHOTO = 100;
+	private Builder layerBuilder;
 	
 	double convertToDegree(String stringDMS,String ref){
 		//from http://android-er.blogspot.com/2010/01/convert-exif-gps-info-to-degree-format.html
@@ -76,6 +80,20 @@ public class MainActivity extends Activity {
 		return ret;
 	}
 	
+	/*
+	// http://stackoverflow.com/questions/3375166/android-drawable-images-from-url
+	Drawable getDrawableFromUrl(Resources res, String url) throws java.net.MalformedURLException, java.io.IOException {
+	    Bitmap x;
+
+	    HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+	    connection.connect();
+	    InputStream input = connection.getInputStream();
+
+	    x = BitmapFactory.decodeStream(input);
+	    return new BitmapDrawable(res, x);
+	}
+	*/
+	
 	protected void onActivityResult(int requestCode, int resultCode, Intent data){
 		super.onActivityResult(requestCode, resultCode, data);
 		
@@ -110,6 +128,23 @@ public class MainActivity extends Activity {
 			// update filename
 			selectedFile = new File(selectedUri);
 			getActionBar().setTitle(selectedFile.getName());
+			/*
+			try { // ( API LV14 - ICS )
+				//
+				// 1 - not work
+				// getActionBar().setIcon(getDrawableFromUrl(getResources(), selectedUri));
+				//
+				// 2 - not work
+				// getActionBar().setLogo(getDrawableFromUrl(getResources(), selectedUri));
+				//
+				// 3 - not work
+				// ImageView logo = (ImageView) findViewById(android.R.id.home);
+				// logo.setImageDrawable(getDrawableFromUrl(getResources(), selectedUri));
+				//
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			*/
 		}
 	}
 	
@@ -134,7 +169,7 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		
-		// custom action bar
+		// custom action bar --- must set before setContentView
 		requestWindowFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
 		getActionBar().setBackgroundDrawable(getResources().getDrawable(R.drawable.bg55));
 	
@@ -150,6 +185,28 @@ public class MainActivity extends Activity {
 		Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
 		photoPickerIntent.setType("image/jpeg");
 		startActivityForResult(photoPickerIntent, SELECT_PHOTO);
+		
+		// setup layer dialog
+		layerBuilder = new AlertDialog.Builder(this);
+		layerBuilder.setTitle("Pick a layer")
+					.setItems(R.array.map_layer, new DialogInterface.OnClickListener(){
+						public void onClick(DialogInterface dialog, int which){
+							switch(which){ // sync with map_layer xml array
+								case 0:
+									map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+									break;
+								case 1:
+									map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+									break;
+								case 2:
+									map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+									break;
+								case 3:
+									map.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
+									break;
+							}
+						}
+					});
 		
 		// init
 		setUpMapIfNeeded();
@@ -249,13 +306,13 @@ public class MainActivity extends Activity {
 		case R.id.menu_share:
 			Intent share = new Intent(Intent.ACTION_SEND);
 			share.setType("image/jpeg");
-			share.putExtra(Intent.EXTRA_STREAM, Uri.parse("file://" + selectedUri));
+			// share.putExtra(Intent.EXTRA_STREAM, Uri.parse("file://" + selectedUri));
+			share.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
 			startActivity(Intent.createChooser(share, "Share Image"));
 			break;
 			
 		case R.id.menu_layers:
-			// TODO --- call layer dialog
-			// map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+			layerBuilder.show();
 			break;
 			
 		case R.id.menu_browse:
