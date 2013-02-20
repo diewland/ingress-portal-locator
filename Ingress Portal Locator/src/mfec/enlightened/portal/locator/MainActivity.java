@@ -42,6 +42,7 @@ public class MainActivity extends Activity {
 	private Builder layerBuilder;
 	private Builder portalNameBuilder;
 	private EditText input;
+	private boolean firsttime_flag = true;
 
 	private void updateLatLongFromImage(Uri selectedImg){
 		Cursor csr = getContentResolver().query(selectedImg, new String[]{android.provider.MediaStore.Images.ImageColumns.DATA}, null, null, null);
@@ -184,6 +185,7 @@ public class MainActivity extends Activity {
 	        }
 	    });
 		
+	    // TODO handle app cycle
 	    Intent intent = getIntent();
 	    Bundle extras = intent.getExtras();
 	    String action = intent.getAction();
@@ -194,11 +196,14 @@ public class MainActivity extends Activity {
 				moveToLatLong();
 			}
 		}
-		else { // come from app icon
+		else if(firsttime_flag){ // come from app icon
+								 // look like resume event come here ??
 			Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
 			photoPickerIntent.setType("image/jpeg");
 			startActivityForResult(photoPickerIntent, SELECT_PHOTO);
+			firsttime_flag = false;
 		}
+		
 	}
 	
 	private void setUpMapIfNeeded() {
@@ -272,6 +277,8 @@ public class MainActivity extends Activity {
 			break;
 			
 		case R.id.menu_share:
+			portalNameBuilder.show();
+			break;
 			/*
 			// NOT WORK #1
 			Intent share = new Intent(Intent.ACTION_SEND);
@@ -288,8 +295,6 @@ public class MainActivity extends Activity {
 			superOps.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
 			startActivity(superOps);
 			*/
-			portalNameBuilder.show();
-			break;
 			
 		case R.id.menu_layers:
 			layerBuilder.show();
