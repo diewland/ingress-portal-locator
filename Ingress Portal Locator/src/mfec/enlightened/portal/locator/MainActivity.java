@@ -42,7 +42,160 @@ public class MainActivity extends Activity {
 	private Builder layerBuilder;
 	private Builder portalNameBuilder;
 	private EditText input;
-	private boolean firsttime_flag = true;
+
+	// ########## ON CREATE ##########
+	
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		
+		// custom action bar --- must set before setContentView
+		requestWindowFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
+		getActionBar().setBackgroundDrawable(getResources().getDrawable(R.drawable.bg55));
+	
+		setContentView(R.layout.activity_main);
+		
+		setUpMapIfNeeded();
+		
+		// Default Location from coarse location
+		LocationManager lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+		double[] bestloc = Utility.getLocation(lm);
+		if(bestloc != null){
+			map_lat_ori  = map_lat  = bestloc[0];
+			map_long_ori  = map_long  = bestloc[1];
+		}
+		
+		// if come from send menu
+	    Intent intent = getIntent();
+	    Bundle extras = intent.getExtras();
+	    String action = intent.getAction();
+		if(Intent.ACTION_SEND.equals(action)){
+			if(extras.containsKey(Intent.EXTRA_STREAM)){
+				Uri uri = (Uri) extras.getParcelable(Intent.EXTRA_STREAM);
+				updateLatLongFromImage(uri);
+				moveToLatLong();
+			}
+		}
+		
+		// setup layer dialog
+		layerBuilder = new AlertDialog.Builder(this);
+		layerBuilder.setTitle("Pick a layer")
+					.setItems(R.array.map_layer, new DialogInterface.OnClickListener(){
+						public void onClick(DialogInterface dialog, int which){
+							switch(which){ // sync with map_layer xml array
+								case 0:
+									map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+									break;
+								case 1:
+									map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+									break;
+								case 2:
+									map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+									break;
+								case 3:
+									map.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
+									break;
+							}
+						}
+					});
+		
+		// setup portal name dialog
+		portalNameBuilder = new AlertDialog.Builder(this);
+		portalNameBuilder.setTitle("Enter portal name");
+		input = new EditText(this); 
+		portalNameBuilder.setView(input);
+		portalNameBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  
+			public void onClick(DialogInterface dialog, int whichButton) {  
+	  			// save before send
+				saveLatLongToImage();
+				// send mail w/ attachment
+				Intent intent = new Intent(Intent.ACTION_SEND);
+				intent.setType("message/rfc822");
+				intent.putExtra(Intent.EXTRA_EMAIL, new String[] {"super-ops@google.com"});
+				intent.putExtra(Intent.EXTRA_SUBJECT, input.getText().toString());
+				// intent.putExtra(Intent.EXTRA_TEXT, "body text");
+				intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
+				startActivity(Intent.createChooser(intent, "Send mail..."));
+		        return;                  
+			}  
+	    });  
+	    portalNameBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+	        public void onClick(DialogInterface dialog, int which) {
+	            return;   
+	        }
+	    });
+	
+		// TODO revise app flow
+		// purpose is auto start when first time
+		// problem is many first times launch after gallery picker
+		Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
+		photoPickerIntent.setType("image/jpeg");
+		startActivityForResult(photoPickerIntent, SELECT_PHOTO);
+		
+	}
+	
+	// ########## RESPONSE FROM GALLERY PICKER ##########
+
+	protected void onActivityResult(int requestCode, int resultCode, Intent data){
+		super.onActivityResult(requestCode, resultCode, data);
+		
+		if(requestCode == SELECT_PHOTO && resultCode == RESULT_OK){
+			Uri selectedImg = data.getData();
+			updateLatLongFromImage(selectedImg);
+			moveToLatLong();
+		}
+	}
+	
+	// ########## MAP FUNCTIONS ##########
+	
+	private void setUpMapIfNeeded() {
+	    // Do a null check to confirm that we have not already instantiated the map.
+	    if (map == null) {
+	        map = ((MapFragment) getFragmentManager().findFragmentById(R.id.map))
+	                            .getMap();
+	        // Check if we were successful in obtaining the map.
+	        if (map != null) {
+	            // The Map is verified. It is now safe to manipulate the map.
+	        }
+	    }
+	}
+	
+	private void moveToLatLong(){
+		LatLng ll = new LatLng(map_lat, map_long);
+		if(marker == null){
+			marker = map.addMarker(new MarkerOptions()
+										.position(ll)
+										.draggable(true));
+			map.moveCamera(CameraUpdateFactory.newLatLngZoom(ll, 15));
+		} else {
+			marker.setPosition(ll);
+			map.moveCamera(CameraUpdateFactory.newLatLng(ll));
+		}
+		// marker.setTitle(map_lat + ", " + map_long);
+	}
+	
+	private Double getCurrentLat(){
+		return marker.getPosition().latitude;
+	}
+	
+	private Double getCurrentLong(){
+		return marker.getPosition().longitude;
+	}
+	
+	private Double[] updateOriLatLong(){
+		map_lat = getCurrentLat();
+		map_long = getCurrentLong();
+		map_lat_ori = getCurrentLat();
+		map_long_ori = getCurrentLong();
+		return new Double[]{ map_lat, map_long };
+	}
+	
+	private void restoreOriLatLong(){
+		map_lat = map_lat_ori;
+		map_long = map_long_ori;
+	}
+	
+	// ########## IMAGE FUNCTIONS ##########
 
 	private void updateLatLongFromImage(Uri selectedImg){
 		Cursor csr = getContentResolver().query(selectedImg, new String[]{android.provider.MediaStore.Images.ImageColumns.DATA}, null, null, null);
@@ -106,154 +259,7 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	// response to Gallery Picker
-	protected void onActivityResult(int requestCode, int resultCode, Intent data){
-		super.onActivityResult(requestCode, resultCode, data);
-		
-		if(requestCode == SELECT_PHOTO && resultCode == RESULT_OK){
-			Uri selectedImg = data.getData();
-			updateLatLongFromImage(selectedImg);
-			moveToLatLong();
-		}
-	}
-	
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		
-		// custom action bar --- must set before setContentView
-		requestWindowFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
-		getActionBar().setBackgroundDrawable(getResources().getDrawable(R.drawable.bg55));
-	
-		setContentView(R.layout.activity_main);
-		
-		setUpMapIfNeeded();
-		
-		// Default Location from coarse location
-		LocationManager lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
-		double[] bestloc = Utility.getLocation(lm);
-		if(bestloc != null){
-			map_lat_ori  = map_lat  = bestloc[0];
-			map_long_ori  = map_long  = bestloc[1];
-		}
-		
-		// setup layer dialog
-		layerBuilder = new AlertDialog.Builder(this);
-		layerBuilder.setTitle("Pick a layer")
-					.setItems(R.array.map_layer, new DialogInterface.OnClickListener(){
-						public void onClick(DialogInterface dialog, int which){
-							switch(which){ // sync with map_layer xml array
-								case 0:
-									map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-									break;
-								case 1:
-									map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-									break;
-								case 2:
-									map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
-									break;
-								case 3:
-									map.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
-									break;
-							}
-						}
-					});
-		
-		// setup portal name dialog
-		portalNameBuilder = new AlertDialog.Builder(this);
-		portalNameBuilder.setTitle("Enter portal name");
-		input = new EditText(this); 
-		portalNameBuilder.setView(input);
-		portalNameBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  
-			public void onClick(DialogInterface dialog, int whichButton) {  
-	  			// save before send
-				saveLatLongToImage();
-				// send mail w/ attachment
-				Intent intent = new Intent(Intent.ACTION_SEND);
-				intent.setType("message/rfc822");
-				intent.putExtra(Intent.EXTRA_EMAIL, new String[] {"super-ops@google.com"});
-				intent.putExtra(Intent.EXTRA_SUBJECT, input.getText().toString());
-				// intent.putExtra(Intent.EXTRA_TEXT, "body text");
-				intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
-				startActivity(Intent.createChooser(intent, "Send mail..."));
-		        return;                  
-			}  
-	    });  
-	    portalNameBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-	        public void onClick(DialogInterface dialog, int which) {
-	            return;   
-	        }
-	    });
-		
-	    // TODO handle app cycle
-	    Intent intent = getIntent();
-	    Bundle extras = intent.getExtras();
-	    String action = intent.getAction();
-		if(Intent.ACTION_SEND.equals(action)){ // come from Send to menu
-			if(extras.containsKey(Intent.EXTRA_STREAM)){
-				Uri uri = (Uri) extras.getParcelable(Intent.EXTRA_STREAM);
-				updateLatLongFromImage(uri);
-				moveToLatLong();
-			}
-		}
-		else if(firsttime_flag){ // come from app icon
-								 // look like resume event come here ??
-			Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
-			photoPickerIntent.setType("image/jpeg");
-			startActivityForResult(photoPickerIntent, SELECT_PHOTO);
-			firsttime_flag = false;
-		}
-		
-	}
-	
-	private void setUpMapIfNeeded() {
-	    // Do a null check to confirm that we have not already instantiated the map.
-	    if (map == null) {
-	        map = ((MapFragment) getFragmentManager().findFragmentById(R.id.map))
-	                            .getMap();
-	        // Check if we were successful in obtaining the map.
-	        if (map != null) {
-	            // The Map is verified. It is now safe to manipulate the map.
-	        }
-	    }
-	}
-	
-	private void moveToLatLong(){
-		LatLng ll = new LatLng(map_lat, map_long);
-		if(marker == null){
-			marker = map.addMarker(new MarkerOptions()
-										.position(ll)
-										.draggable(true));
-			map.moveCamera(CameraUpdateFactory.newLatLngZoom(ll, 15));
-		} else {
-			marker.setPosition(ll);
-			map.moveCamera(CameraUpdateFactory.newLatLng(ll));
-		}
-		// marker.setTitle(map_lat + ", " + map_long);
-	}
-	
-	private Double getCurrentLat(){
-		return marker.getPosition().latitude;
-	}
-	
-	private Double getCurrentLong(){
-		return marker.getPosition().longitude;
-	}
-	
-	private Double[] updateOriLatLong(){
-		map_lat = getCurrentLat();
-		map_long = getCurrentLong();
-		map_lat_ori = getCurrentLat();
-		map_long_ori = getCurrentLong();
-		return new Double[]{ map_lat, map_long };
-	}
-	
-	private void restoreOriLatLong(){
-		map_lat = map_lat_ori;
-		map_long = map_long_ori;
-	}
-	
-	// ---------------------------------------------------------------------------- //
+	// ########## MENU ##########
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
