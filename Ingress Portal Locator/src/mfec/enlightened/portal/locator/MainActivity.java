@@ -6,6 +6,7 @@ import java.io.IOException;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -40,7 +41,7 @@ public class MainActivity extends Activity {
 	private static final int SELECT_PHOTO = 100;
 	private Builder layerBuilder;
 
-	private void loadImageToMap(Uri selectedImg){
+	private void updateLatLongFromImage(Uri selectedImg){
 		Cursor csr = getContentResolver().query(selectedImg, new String[]{android.provider.MediaStore.Images.ImageColumns.DATA}, null, null, null);
 		csr.moveToFirst();
 		
@@ -57,7 +58,6 @@ public class MainActivity extends Activity {
 				map_long_ori = Utility.convertToDegree(dmslong, dmslongref);
 				map_lat = map_lat_ori;
 				map_long = map_long_ori;
-				moveToLatLong();
 				Log.d("maplat", "Got Photo LOC: " + map_lat + " - " + map_long);
 			}else{
 				Log.d("maplat","Null TAG");
@@ -95,7 +95,8 @@ public class MainActivity extends Activity {
 		
 		if(requestCode == SELECT_PHOTO && resultCode == RESULT_OK){
 			Uri selectedImg = data.getData();
-			loadImageToMap(selectedImg);
+			updateLatLongFromImage(selectedImg);
+			moveToLatLong();
 		}
 	}
 	
@@ -147,7 +148,8 @@ public class MainActivity extends Activity {
 		if(Intent.ACTION_SEND.equals(action)){ // come from Send to menu
 			if(extras.containsKey(Intent.EXTRA_STREAM)){
 				Uri uri = (Uri) extras.getParcelable(Intent.EXTRA_STREAM);
-				loadImageToMap(uri);
+				updateLatLongFromImage(uri);
+				moveToLatLong();
 			}
 		}
 		else { // come from app icon
@@ -246,11 +248,23 @@ public class MainActivity extends Activity {
 			break;
 			
 		case R.id.menu_share:
+			/*
 			Intent share = new Intent(Intent.ACTION_SEND);
 			share.setType("image/jpeg");
 			// share.putExtra(Intent.EXTRA_STREAM, Uri.parse("file://" + selectedUri));
 			share.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
 			startActivity(Intent.createChooser(share, "Share Image"));
+			*/
+			
+			// TODO autosave before send
+			
+			Intent superOps = new Intent(Intent.ACTION_SEND);
+			superOps.setType("image/*");
+			superOps.setFlags(0x80001);
+			superOps.setComponent(new ComponentName("com.nianticproject.ingress", "com.nianticproject.ingress.share.ShareToSuperOpsActivity"));
+			superOps.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
+			startActivity(superOps);
+			
 			break;
 			
 		case R.id.menu_layers:
