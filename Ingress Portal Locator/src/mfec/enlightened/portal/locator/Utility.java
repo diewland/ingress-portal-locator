@@ -62,18 +62,7 @@ public class Utility {
 		return null;
 	}
 	
-	/*
 	// http://stackoverflow.com/questions/3375166/android-drawable-images-from-url
-	public static Drawable getDrawableFromUrl(Resources res, String url) throws java.net.MalformedURLException, java.io.IOException {
-	    Bitmap x;
-
-	    HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-	    connection.connect();
-	    InputStream input = connection.getInputStream();
-
-	    x = BitmapFactory.decodeStream(input);
-	    return new BitmapDrawable(res, x);
-	}
-	*/
+	// ...
 	
 }

@@ -6,7 +6,6 @@ import java.io.IOException;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -19,6 +18,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -40,6 +40,8 @@ public class MainActivity extends Activity {
 	private File selectedFile;
 	private static final int SELECT_PHOTO = 100;
 	private Builder layerBuilder;
+	private Builder portalNameBuilder;
+	private EditText input;
 
 	private void updateLatLongFromImage(Uri selectedImg){
 		Cursor csr = getContentResolver().query(selectedImg, new String[]{android.provider.MediaStore.Images.ImageColumns.DATA}, null, null, null);
@@ -70,23 +72,37 @@ public class MainActivity extends Activity {
 		// update filename
 		selectedFile = new File(selectedUri);
 		getActionBar().setTitle(selectedFile.getName());
-		/*
-		try { // ( API LV14 - ICS )
+		try {
+			// getActionBar().setIcon(R.drawable.xxx);
 			//
-			// 1 - not work
-			// getActionBar().setIcon(getDrawableFromUrl(getResources(), selectedUri));
-			//
-			// 2 - not work
-			// getActionBar().setLogo(getDrawableFromUrl(getResources(), selectedUri));
-			//
-			// 3 - not work
 			// ImageView logo = (ImageView) findViewById(android.R.id.home);
-			// logo.setImageDrawable(getDrawableFromUrl(getResources(), selectedUri));
+			// logo.setImageDrawable(new BitmapDrawable(getResources(), Utility.getBitmapFromURL(selectedUri)));
 			//
 		} catch (Exception e) {
-			e.printStackTrace();
+			// e.printStackTrace();
+			Log.d("DIEWLAND", e.getMessage());
 		}
-		*/
+	}
+	
+	private void saveLatLongToImage(){
+		Double[] ll = updateOriLatLong();
+		// save new lat,long to photo
+		Double curr_lat = ll[0];
+		Double curr_long = ll[1];
+		try {
+			ExifInterface exif = new ExifInterface(selectedUri);
+			String str_lat = Utility.convertToDMS(map_lat);
+			String lat_ref = map_lat > 0 ? "N" : "E";
+			String str_long = Utility.convertToDMS(map_long);
+			String long_ref = map_long > 0 ? "E" : "W";
+			exif.setAttribute(exif.TAG_GPS_LATITUDE, str_lat);
+			exif.setAttribute(exif.TAG_GPS_LATITUDE_REF, lat_ref);
+			exif.setAttribute(exif.TAG_GPS_LONGITUDE, str_long);
+			exif.setAttribute(exif.TAG_GPS_LONGITUDE_REF, long_ref);
+			exif.saveAttributes();
+		} catch (IOException e) {
+			Toast.makeText(getApplicationContext(),"Error Saving Location",Toast.LENGTH_LONG).show();
+		}
 	}
 
 	// response to Gallery Picker
@@ -141,6 +157,32 @@ public class MainActivity extends Activity {
 							}
 						}
 					});
+		
+		// setup portal name dialog
+		portalNameBuilder = new AlertDialog.Builder(this);
+		portalNameBuilder.setTitle("Enter portal name");
+		input = new EditText(this); 
+		portalNameBuilder.setView(input);
+		portalNameBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  
+			public void onClick(DialogInterface dialog, int whichButton) {  
+	  			// save before send
+				saveLatLongToImage();
+				// send mail w/ attachment
+				Intent intent = new Intent(Intent.ACTION_SEND);
+				intent.setType("message/rfc822");
+				intent.putExtra(Intent.EXTRA_EMAIL, new String[] {"super-ops@google.com"});
+				intent.putExtra(Intent.EXTRA_SUBJECT, input.getText().toString());
+				// intent.putExtra(Intent.EXTRA_TEXT, "body text");
+				intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
+				startActivity(Intent.createChooser(intent, "Send mail..."));
+		        return;                  
+			}  
+	    });  
+	    portalNameBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+	        public void onClick(DialogInterface dialog, int which) {
+	            return;   
+	        }
+	    });
 		
 	    Intent intent = getIntent();
 	    Bundle extras = intent.getExtras();
@@ -225,46 +267,28 @@ public class MainActivity extends Activity {
 			break;
 			
 		case R.id.menu_save:
-			Double[] ll = updateOriLatLong();
-			// save new lat,long to photo
-			Double curr_lat = ll[0];
-			Double curr_long = ll[1];
-			try {
-				ExifInterface exif = new ExifInterface(selectedUri);
-				String str_lat = Utility.convertToDMS(map_lat);
-				String lat_ref = map_lat > 0 ? "N" : "E";
-				String str_long = Utility.convertToDMS(map_long);
-				String long_ref = map_long > 0 ? "E" : "W";
-				exif.setAttribute(exif.TAG_GPS_LATITUDE, str_lat);
-				exif.setAttribute(exif.TAG_GPS_LATITUDE_REF, lat_ref);
-				exif.setAttribute(exif.TAG_GPS_LONGITUDE, str_long);
-				exif.setAttribute(exif.TAG_GPS_LONGITUDE_REF, long_ref);
-				exif.saveAttributes();
-			} catch (IOException e) {
-				Toast.makeText(getApplicationContext(),"Error Saving Location",Toast.LENGTH_LONG).show();
-			}
-			// toast
+			saveLatLongToImage();
 			Toast.makeText(getApplicationContext(), "Save to\n"+ map_lat +"\n"+ map_long, Toast.LENGTH_LONG).show();
 			break;
 			
 		case R.id.menu_share:
 			/*
+			// NOT WORK #1
 			Intent share = new Intent(Intent.ACTION_SEND);
 			share.setType("image/jpeg");
 			// share.putExtra(Intent.EXTRA_STREAM, Uri.parse("file://" + selectedUri));
 			share.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
 			startActivity(Intent.createChooser(share, "Share Image"));
-			*/
-			
-			// TODO autosave before send
-			
+			//
+			// NOT WORK #2
 			Intent superOps = new Intent(Intent.ACTION_SEND);
-			superOps.setType("image/*");
+			superOps.setType("image/jpeg");
 			superOps.setFlags(0x80001);
 			superOps.setComponent(new ComponentName("com.nianticproject.ingress", "com.nianticproject.ingress.share.ShareToSuperOpsActivity"));
 			superOps.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
 			startActivity(superOps);
-			
+			*/
+			portalNameBuilder.show();
 			break;
 			
 		case R.id.menu_layers:
