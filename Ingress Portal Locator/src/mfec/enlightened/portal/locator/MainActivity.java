@@ -5,7 +5,6 @@ import java.io.IOException;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.AlertDialog.Builder;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -39,8 +38,6 @@ public class MainActivity extends Activity {
 	private String selectedUri;
 	private File selectedFile;
 	private static final int SELECT_PHOTO = 100;
-	private Builder layerBuilder;
-	private Builder portalNameBuilder;
 	private EditText input;
 
 	// ########## ON CREATE ##########
@@ -55,6 +52,7 @@ public class MainActivity extends Activity {
 	
 		setContentView(R.layout.activity_main);
 		
+		// set up view
 		setUpMapIfNeeded();
 		
 		// Default Location from coarse location
@@ -76,54 +74,6 @@ public class MainActivity extends Activity {
 				moveToLatLong();
 			}
 		}
-		
-		// setup layer dialog
-		layerBuilder = new AlertDialog.Builder(this);
-		layerBuilder.setTitle("Pick a layer")
-					.setItems(R.array.map_layer, new DialogInterface.OnClickListener(){
-						public void onClick(DialogInterface dialog, int which){
-							switch(which){ // sync with map_layer xml array
-								case 0:
-									map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-									break;
-								case 1:
-									map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-									break;
-								case 2:
-									map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
-									break;
-								case 3:
-									map.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
-									break;
-							}
-						}
-					});
-		
-		// setup portal name dialog
-		portalNameBuilder = new AlertDialog.Builder(this);
-		portalNameBuilder.setTitle("Enter portal name");
-		input = new EditText(this); 
-		portalNameBuilder.setView(input);
-		portalNameBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  
-			public void onClick(DialogInterface dialog, int whichButton) {  
-	  			// save before send
-				saveLatLongToImage();
-				// send mail w/ attachment
-				Intent intent = new Intent(Intent.ACTION_SEND);
-				intent.setType("message/rfc822");
-				intent.putExtra(Intent.EXTRA_EMAIL, new String[] {"super-ops@google.com"});
-				intent.putExtra(Intent.EXTRA_SUBJECT, input.getText().toString());
-				// intent.putExtra(Intent.EXTRA_TEXT, "body text");
-				intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
-				startActivity(Intent.createChooser(intent, "Send mail..."));
-		        return;                  
-			}  
-	    });  
-	    portalNameBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-	        public void onClick(DialogInterface dialog, int which) {
-	            return;   
-	        }
-	    });
 	
 		// TODO revise app flow
 		// purpose is auto start when first time
@@ -226,16 +176,6 @@ public class MainActivity extends Activity {
 		// update filename
 		selectedFile = new File(selectedUri);
 		getActionBar().setTitle(selectedFile.getName());
-		try {
-			// getActionBar().setIcon(R.drawable.xxx);
-			//
-			// ImageView logo = (ImageView) findViewById(android.R.id.home);
-			// logo.setImageDrawable(new BitmapDrawable(getResources(), Utility.getBitmapFromURL(selectedUri)));
-			//
-		} catch (Exception e) {
-			// e.printStackTrace();
-			Log.d("DIEWLAND", e.getMessage());
-		}
 	}
 	
 	private void saveLatLongToImage(){
@@ -283,8 +223,31 @@ public class MainActivity extends Activity {
 			break;
 			
 		case R.id.menu_share:
+			AlertDialog.Builder portalNameBuilder = new AlertDialog.Builder(this);
+			portalNameBuilder.setTitle("Enter portal name");
+			input = new EditText(this); 
+			portalNameBuilder.setView(input);
+			portalNameBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  
+				public void onClick(DialogInterface dialog, int whichButton) {  
+		  			// save before send
+					saveLatLongToImage();
+					// send mail w/ attachment
+					Intent intent = new Intent(Intent.ACTION_SEND);
+					intent.setType("message/rfc822");
+					intent.putExtra(Intent.EXTRA_EMAIL, new String[] {"super-ops@google.com"});
+					intent.putExtra(Intent.EXTRA_SUBJECT, input.getText().toString());
+					// intent.putExtra(Intent.EXTRA_TEXT, "body text");
+					intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
+					startActivity(Intent.createChooser(intent, "Send mail..."));
+			        return;                  
+				}  
+		    });  
+		    portalNameBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+		        public void onClick(DialogInterface dialog, int which) {
+		            return;   
+		        }
+		    });
 			portalNameBuilder.show();
-			break;
 			/*
 			// NOT WORK #1
 			Intent share = new Intent(Intent.ACTION_SEND);
@@ -301,8 +264,29 @@ public class MainActivity extends Activity {
 			superOps.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
 			startActivity(superOps);
 			*/
+			break;
 			
 		case R.id.menu_layers:
+			AlertDialog.Builder layerBuilder = new AlertDialog.Builder(this);
+			layerBuilder.setTitle("Pick a layer")
+						.setItems(R.array.map_layer, new DialogInterface.OnClickListener(){
+							public void onClick(DialogInterface dialog, int which){
+								switch(which){ // sync with map_layer xml array
+									case 0:
+										map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+										break;
+									case 1:
+										map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+										break;
+									case 2:
+										map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+										break;
+									case 3:
+										map.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
+										break;
+								}
+							}
+						});
 			layerBuilder.show();
 			break;
 			
