@@ -238,7 +238,7 @@ public class MainActivity extends Activity {
 					intent.putExtra(Intent.EXTRA_SUBJECT, input.getText().toString());
 					// intent.putExtra(Intent.EXTRA_TEXT, "body text");
 					intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(selectedFile));
-					startActivity(Intent.createChooser(intent, "Send mail..."));
+					startActivity(Intent.createChooser(intent, "Send mail via"));
 			        return;                  
 				}  
 		    });  
