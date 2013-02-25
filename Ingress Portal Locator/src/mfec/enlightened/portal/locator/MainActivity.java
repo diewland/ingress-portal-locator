@@ -38,50 +38,43 @@ public class MainActivity extends Activity {
 	private String selectedUri;
 	private File selectedFile;
 	private static final int SELECT_PHOTO = 100;
-	private EditText input;
+	
+	private Context c;
+	private LocationManager lm;
 
 	// ########## ON CREATE ##########
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		
-		// custom action bar --- must set before setContentView
-		requestWindowFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
-		getActionBar().setBackgroundDrawable(getResources().getDrawable(R.drawable.bg55));
-	
+		requestWindowFeature(Window.FEATURE_ACTION_BAR_OVERLAY); // custom
+		getActionBar().setBackgroundDrawable(getResources().getDrawable(R.drawable.bg55)); // custom
 		setContentView(R.layout.activity_main);
 		
 		// set up view
 		setUpMapIfNeeded();
 		
-		// Default Location from coarse location
-		LocationManager lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
-		double[] bestloc = Utility.getLocation(lm);
-		if(bestloc != null){
-			map_lat_ori  = map_lat  = bestloc[0];
-			map_long_ori  = map_long  = bestloc[1];
-		}
-		
-		// if come from send menu
+		// get app variables
+		c = getApplicationContext();
+		lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
 	    Intent intent = getIntent();
 	    Bundle extras = intent.getExtras();
 	    String action = intent.getAction();
+	    
 		if(Intent.ACTION_SEND.equals(action)){
+			// come from send menu
 			if(extras.containsKey(Intent.EXTRA_STREAM)){
 				Uri uri = (Uri) extras.getParcelable(Intent.EXTRA_STREAM);
 				updateLatLongFromImage(uri);
 				moveToLatLong();
 			}
 		}
-	
-		// TODO revise app flow
-		// purpose is auto start when first time
-		// problem is many first times launch after gallery picker
-		Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
-		photoPickerIntent.setType("image/jpeg");
-		startActivityForResult(photoPickerIntent, SELECT_PHOTO);
-		
+		else if(extras == null) {
+			// NOT callback from selecting image, go to gallery picker
+			Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
+			photoPickerIntent.setType("image/jpeg");
+			startActivityForResult(photoPickerIntent, SELECT_PHOTO);
+		}
 	}
 	
 	// ########## RESPONSE FROM GALLERY PICKER ##########
@@ -106,6 +99,44 @@ public class MainActivity extends Activity {
 	        // Check if we were successful in obtaining the map.
 	        if (map != null) {
 	            // The Map is verified. It is now safe to manipulate the map.
+	        	map.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
+					public void onMarkerDragEnd(Marker arg0) {
+						map_lat = getCurrentLat();
+						map_long = getCurrentLong();
+					}
+					public void onMarkerDragStart(Marker arg0) {}
+					public void onMarkerDrag(Marker arg0) {}
+				});
+	        	map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+					public boolean onMarkerClick(Marker m) {
+						AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+						builder.setTitle("Enter Lat,Long");
+						final EditText input = new EditText(MainActivity.this); 
+						input.setText(map_lat + "," + map_long);
+						builder.setView(input);
+						builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  
+							public void onClick(DialogInterface dialog, int whichButton) {
+								try {
+									String[] bestloc = input.getText().toString().split(",");
+									map_lat_ori  = map_lat  = Double.parseDouble(bestloc[0]);
+									map_long_ori = map_long = Double.parseDouble(bestloc[1]);
+									moveToLatLong();
+								}
+								catch(Exception e){
+									Utility.toast(c, "Invalid format ex. 13.764912,100.538308", Toast.LENGTH_LONG);
+								}
+						        return;                  
+							}  
+					    });  
+					    builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+					        public void onClick(DialogInterface dialog, int which) {
+					            return;   
+					        }
+					    });
+						builder.show();
+						return false;
+					}
+				});
 	        }
 	    }
 	}
@@ -130,14 +161,6 @@ public class MainActivity extends Activity {
 	
 	private Double getCurrentLong(){
 		return marker.getPosition().longitude;
-	}
-	
-	private Double[] updateOriLatLong(){
-		map_lat = getCurrentLat();
-		map_long = getCurrentLong();
-		map_lat_ori = getCurrentLat();
-		map_long_ori = getCurrentLong();
-		return new Double[]{ map_lat, map_long };
 	}
 	
 	private void restoreOriLatLong(){
@@ -165,12 +188,19 @@ public class MainActivity extends Activity {
 				map_lat = map_lat_ori;
 				map_long = map_long_ori;
 				Log.d("maplat", "Got Photo LOC: " + map_lat + " - " + map_long);
+				Utility.toast(c, "Found location\n" + map_lat + "\n" + map_long, Toast.LENGTH_SHORT);
 			}else{
+				// load current location
+				double[] bestloc = Utility.getLocation(lm);
+				if(bestloc != null){
+					map_lat_ori  = map_lat  = bestloc[0];
+					map_long_ori = map_long = bestloc[1];
+				}
 				Log.d("maplat","Null TAG");
+				Utility.toast(c, "Location not found", Toast.LENGTH_SHORT);
 			}
 		} catch (IOException e) {
-			Toast t = Toast.makeText(getApplicationContext(), "Error Open Image", Toast.LENGTH_SHORT);
-			t.show();
+			Utility.toast(c, "Error Open Image", Toast.LENGTH_SHORT);
 		}
 		
 		// update filename
@@ -179,10 +209,10 @@ public class MainActivity extends Activity {
 	}
 	
 	private void saveLatLongToImage(){
-		Double[] ll = updateOriLatLong();
-		// save new lat,long to photo
-		Double curr_lat = ll[0];
-		Double curr_long = ll[1];
+		// update lat_ori, long_ori
+		map_lat_ori = map_lat;
+		map_long_ori = map_long;
+		// save to file
 		try {
 			ExifInterface exif = new ExifInterface(selectedUri);
 			String str_lat = Utility.convertToDMS(map_lat);
@@ -194,8 +224,9 @@ public class MainActivity extends Activity {
 			exif.setAttribute(exif.TAG_GPS_LONGITUDE, str_long);
 			exif.setAttribute(exif.TAG_GPS_LONGITUDE_REF, long_ref);
 			exif.saveAttributes();
+			Utility.toast(c, "Save to\n"+ map_lat +"\n"+ map_long, Toast.LENGTH_SHORT);
 		} catch (IOException e) {
-			Toast.makeText(getApplicationContext(),"Error Saving Location",Toast.LENGTH_LONG).show();
+			Utility.toast(c, "Error Saving Location", Toast.LENGTH_SHORT);
 		}
 	}
 
@@ -219,15 +250,14 @@ public class MainActivity extends Activity {
 			
 		case R.id.menu_save:
 			saveLatLongToImage();
-			Toast.makeText(getApplicationContext(), "Save to\n"+ map_lat +"\n"+ map_long, Toast.LENGTH_LONG).show();
 			break;
 			
 		case R.id.menu_share:
-			AlertDialog.Builder portalNameBuilder = new AlertDialog.Builder(this);
-			portalNameBuilder.setTitle("Enter portal name");
-			input = new EditText(this); 
-			portalNameBuilder.setView(input);
-			portalNameBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  
+			AlertDialog.Builder sBuilder = new AlertDialog.Builder(this);
+			sBuilder.setTitle("Enter portal name");
+			final EditText input = new EditText(this); 
+			sBuilder.setView(input);
+			sBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  
 				public void onClick(DialogInterface dialog, int whichButton) {  
 		  			// save before send
 					saveLatLongToImage();
@@ -242,12 +272,12 @@ public class MainActivity extends Activity {
 			        return;                  
 				}  
 		    });  
-		    portalNameBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+		    sBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
 		        public void onClick(DialogInterface dialog, int which) {
 		            return;   
 		        }
 		    });
-			portalNameBuilder.show();
+			sBuilder.show();
 			/*
 			// NOT WORK #1
 			Intent share = new Intent(Intent.ACTION_SEND);
@@ -267,8 +297,8 @@ public class MainActivity extends Activity {
 			break;
 			
 		case R.id.menu_layers:
-			AlertDialog.Builder layerBuilder = new AlertDialog.Builder(this);
-			layerBuilder.setTitle("Pick a layer")
+			AlertDialog.Builder lBuilder = new AlertDialog.Builder(this);
+			lBuilder.setTitle("Pick a layer")
 						.setItems(R.array.map_layer, new DialogInterface.OnClickListener(){
 							public void onClick(DialogInterface dialog, int which){
 								switch(which){ // sync with map_layer xml array
@@ -287,7 +317,7 @@ public class MainActivity extends Activity {
 								}
 							}
 						});
-			layerBuilder.show();
+			lBuilder.show();
 			break;
 			
 		case R.id.menu_browse:

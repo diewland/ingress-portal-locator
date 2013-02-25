@@ -2,9 +2,11 @@ package mfec.enlightened.portal.locator;
 
 import java.util.List;
 
+import android.content.Context;
 import android.location.Location;
 import android.location.LocationManager;
 import android.util.Log;
+import android.widget.Toast;
 
 public class Utility {
 
@@ -60,6 +62,11 @@ public class Utility {
 			return ret;
 		}
 		return null;
+	}
+	
+	public static void toast(Context c, String msg, int duration){
+		Toast t = Toast.makeText(c, msg, duration);
+		t.show();
 	}
 	
 }
